@@ -25,10 +25,10 @@ export default function CamareroPage() {
       const nombreFinal = nicknameSnap.exists() ? nicknameSnap.val() : user.displayName;
 
       const conectadosRef = ref(db, 'partidas/camarero_1/conectados');
-      const conectadosSnap = await get(conectadosRef);
-      const conectadosData = conectadosSnap.val() || {};
-      const yaEsta = !!conectadosData[user.uid];
-      const totalConectados = Object.keys(conectadosData).length;
+        const conectadosSnap = await get(conectadosRef);
+        const conectadosData = conectadosSnap.val() || {};
+        const yaEsta = !!conectadosData[user.uid];
+        const totalConectados = Object.keys(conectadosData).length;
 
       if (!yaEsta && totalConectados >= 10) {
         alert("La cocina está llena. Hay 10 camareros conectados.");
@@ -39,7 +39,8 @@ export default function CamareroPage() {
       await set(playerRef, {
         nombre: nombreFinal,
         foto: user.photoURL,
-        uid: user.uid
+        uid: user.uid,
+        joinedAt: conectadosData[user.uid]?.joinedAt || Date.now()
       });
 
       onDisconnect(playerRef).remove();
@@ -118,15 +119,28 @@ export default function CamareroPage() {
   const conectados = partida?.conectados || {};
   const totalConectados = Object.keys(conectados).length;
   const puedeComenzar = totalConectados >= 3 && totalConectados <= 10;
+  const hostUid = Object.keys(conectados)
+    .sort((a, b) => (conectados[a]?.joinedAt || 0) - (conectados[b]?.joinedAt || 0))[0] || null;
   const listaConectados = Object.values(conectados).sort((a: any, b: any) => {
     if (usuarioLogueado && a.uid === usuarioLogueado.uid) return -1;
     if (usuarioLogueado && b.uid === usuarioLogueado.uid) return 1;
     return 0;
   });
+  const mesas = Array.from({ length: 10 }, (_, i) => listaConectados[i] || null);
 
   return (
     // Fondo con textura de mantel y viñeta oscura
     <main className="min-h-screen bg-stone-950 bg-checkered-pattern bg-fixed relative flex flex-col items-center p-6 font-body overflow-hidden text-stone-200">
+      
+      {/* Acciones rápidas */}
+      <div className="w-full max-w-4xl flex items-center justify-between mb-4">
+        <a href="#" className="text-trattoria-gold underline decoration-dotted hover:text-trattoria-cream transition-colors text-sm">
+          Reglamento
+        </a>
+        <a href="#lobby" className="bg-trattoria-red text-trattoria-cream px-4 py-2 rounded-lg font-serif font-bold shadow-[0_8px_20px_rgba(139,0,0,0.35)] border border-trattoria-gold hover:bg-red-800 active:scale-95 transition-all">
+          Ingresar a la sala
+        </a>
+      </div>
       
       {/* Título Principal con estilo de menú antiguo */}
       <div className="relative z-10 text-center mb-10 mt-4">
@@ -140,7 +154,7 @@ export default function CamareroPage() {
       
       {/* 1. LOBBY / SALA DE ESPERA ESTILO PIZARRA DE MENÚ */}
       {(!partida?.estado || partida.estado === 'ESPERANDO') && (
-        <div className="relative z-10 animate-in zoom-in duration-500 max-w-md w-full">
+        <div id="lobby" className="relative z-10 animate-in zoom-in duration-500 w-full max-w-5xl">
           {/* Marco de madera y fondo de pizarra/menú */}
           <div className="bg-trattoria-wood bg-opacity-95 border-[6px] border-trattoria-wood-light rounded-[2rem] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden">
             
@@ -150,44 +164,65 @@ export default function CamareroPage() {
             <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-trattoria-gold rounded-bl-xl opacity-50"></div>
             <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-trattoria-gold rounded-br-xl opacity-50"></div>
 
-            <h2 className="text-2xl font-serif text-center mb-2 text-trattoria-cream tracking-wider">
-               Staff de Cocina ({totalConectados}/10)
-            </h2>
-            <p className="text-center text-sm text-trattoria-gold/70 mb-6">
-              Necesitamos mínimo 3 y máximo 10 camareros conectados.
-            </p>
-            
-            <div className="grid grid-cols-2 gap-6 mb-10">
-              {partida?.conectados && listaConectados.map((p: any, i: number) => (
-                <div key={i} className="flex flex-col items-center group">
-                  <div className="relative mb-3 transition-transform group-hover:scale-110 duration-300">
-                     {/* Marco de foto dorado */}
-                     <div className="absolute inset-0 rounded-full border-[3px] border-trattoria-gold shadow-[0_0_15px_rgba(212,175,55,0.3)]"></div>
-                     <img src={p.foto} className="w-16 h-16 rounded-full border-4 border-trattoria-wood-light" alt="" />
-                  </div>
-                  <span className="text-sm font-bold text-trattoria-cream uppercase tracking-tight bg-trattoria-red/80 px-3 py-1 rounded-full shadow-sm">
-                     {p.nombre}
-                  </span>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-serif text-trattoria-cream tracking-wider">
+                  Staff de Cocina ({totalConectados}/10)
+                </h2>
+                <p className="text-sm text-trattoria-gold/70">
+                  Necesitamos mínimo 3 y máximo 10 camareros conectados.
+                </p>
+              </div>
+              {hostUid && (
+                <div className="text-right">
+                  <p className="text-xs text-trattoria-gold/70 uppercase tracking-widest">Capo de Sala</p>
+                  <p className="text-trattoria-cream font-serif font-bold">{conectados[hostUid]?.nombre}</p>
                 </div>
-              ))}
+              )}
+            </div>
+            
+            {/* Mesas (10 lugares) */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              {mesas.map((p: any, i: number) => {
+                const esHost = hostUid && p?.uid === hostUid;
+                const esYo = usuarioLogueado && p?.uid === usuarioLogueado.uid;
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-2xl border-2 border-trattoria-gold/50 bg-black/30 p-4 flex flex-col items-center justify-center gap-3 shadow-[0_10px_25px_rgba(0,0,0,0.35)] ${p ? 'backdrop-blur-sm' : 'opacity-60'}`}
+                  >
+                    <div className="w-16 h-16 rounded-full border-4 border-trattoria-wood-light bg-trattoria-wood/60 flex items-center justify-center overflow-hidden">
+                      {p?.foto ? (
+                        <img src={p.foto} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-trattoria-cream font-serif text-xl">Mesa {i + 1}</span>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-trattoria-cream font-bold">{p ? p.nombre : `Mesa ${i + 1}`}</p>
+                      <p className="text-trattoria-gold text-xs">
+                        {p ? (esHost ? 'Capo de sala' : esYo ? 'Eres tú' : 'Camarero') : 'Disponible'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            <button 
-              onClick={repartirCartas}
-              disabled={!puedeComenzar}
-              aria-disabled={!puedeComenzar}
-              className="w-full relative overflow-hidden bg-trattoria-red hover:bg-red-800 disabled:bg-trattoria-wood/70 disabled:text-trattoria-cream/60 disabled:border-trattoria-wood-light/70 text-trattoria-cream py-5 rounded-xl font-serif font-bold text-xl transition-all shadow-[0_10px_20px_rgba(139,0,0,0.3),inset_0_2px_0_rgba(255,255,255,0.2)] active:scale-95 border-2 border-trattoria-gold group disabled:cursor-not-allowed disabled:active:scale-100"
-            >
-               <span className="relative z-10 flex items-center justify-center gap-2">
-                  🍝 Marchare la Comanda!
-               </span>
-               {/* Brillo al pasar el mouse */}
-               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-trattoria-gold/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
-            </button>
-            
-            <p className="text-trattoria-gold/60 text-center text-xs mt-6 font-serif italic">
-              * Se requieren mínimo 3 camareros para abrir la cocina (capacidad 10).
-            </p>
+            {/* Acción central: solo host puede comenzar */}
+            <div className="flex flex-col items-center gap-2">
+              <button 
+                onClick={() => alert("Interfaz de inicio de partida llegará aquí.")}
+                disabled={!puedeComenzar || !usuarioLogueado || usuarioLogueado?.uid !== hostUid}
+                aria-disabled={!puedeComenzar || !usuarioLogueado || usuarioLogueado?.uid !== hostUid}
+                className="px-6 py-3 rounded-xl font-serif font-bold text-lg bg-trattoria-gold text-trattoria-wood border-2 border-trattoria-wood hover:bg-yellow-400 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+              >
+                Comenzar la partida
+              </button>
+              <p className="text-trattoria-gold/70 text-xs">
+                Solo el primero en llegar puede iniciar cuando sean 3 o más.
+              </p>
+            </div>
           </div>
         </div>
       )}
