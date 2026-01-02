@@ -176,7 +176,14 @@ export default function CamareroPage() {
   }, [juego, conectados]);
 
   const mesa = useMemo(() => {
-    return juego?.mesa || { centro: [], reveladas: [], mazoCocina: [], mazoPedidos: [], descarte: [] };
+    const base = juego?.mesa || {};
+    return {
+      centro: base.centro || [],
+      reveladas: base.reveladas || [],
+      mazoCocina: base.mazoCocina || [],
+      mazoPedidos: base.mazoPedidos || [],
+      descarte: base.descarte || [],
+    };
   }, [juego]);
 
   const miEstado = usuarioLogueado ? juego?.jugadores?.[usuarioLogueado.uid] : null;
@@ -229,7 +236,7 @@ export default function CamareroPage() {
       return;
     }
 
-    const cartaSeleccionada = (juego.mesa.centro as CocinaCarta[]).find((c) => c.id === cocinaSeleccionada);
+    const cartaSeleccionada = (mesa.centro as CocinaCarta[]).find((c) => c.id === cocinaSeleccionada);
     await update(ref(db, 'partidas/camarero_1'), {
       accionPendiente: {
         tipo: 'descartar',
