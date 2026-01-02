@@ -61,7 +61,13 @@ export default function CamareroPage() {
   useEffect(() => {
     const salaRef = ref(db, 'partidas/camarero_1');
     const unsub = onValue(salaRef, (snapshot) => {
-      setPartida(snapshot.val());
+      const data = snapshot.val();
+      setPartida(data);
+
+      // Si la sala existe pero no tiene estado, la ponemos en ESPERANDO.
+      if (data && !data.estado) {
+        update(salaRef, { estado: 'ESPERANDO', historial: data.historial || "Esperando camareros..." });
+      }
     });
 
     return () => unsub();
@@ -128,6 +134,11 @@ export default function CamareroPage() {
   });
   const mesas = Array.from({ length: 10 }, (_, i) => listaConectados[i] || null);
 
+  const irAlLobby = () => {
+    const el = document.getElementById('lobby');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     // Fondo con textura de mantel y viñeta oscura
     <main className="min-h-screen bg-stone-950 bg-checkered-pattern bg-fixed relative flex flex-col items-center p-6 font-body overflow-hidden text-stone-200">
@@ -137,9 +148,13 @@ export default function CamareroPage() {
         <a href="#" className="text-trattoria-gold underline decoration-dotted hover:text-trattoria-cream transition-colors text-sm">
           Reglamento
         </a>
-        <a href="#lobby" className="bg-trattoria-red text-trattoria-cream px-4 py-2 rounded-lg font-serif font-bold shadow-[0_8px_20px_rgba(139,0,0,0.35)] border border-trattoria-gold hover:bg-red-800 active:scale-95 transition-all">
+        <button
+          type="button"
+          onClick={irAlLobby}
+          className="bg-trattoria-red text-trattoria-cream px-4 py-2 rounded-lg font-serif font-bold shadow-[0_8px_20px_rgba(139,0,0,0.35)] border border-trattoria-gold hover:bg-red-800 active:scale-95 transition-all"
+        >
           Ingresar a la sala
-        </a>
+        </button>
       </div>
       
       {/* Título Principal con estilo de menú antiguo */}
