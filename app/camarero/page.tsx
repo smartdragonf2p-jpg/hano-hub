@@ -176,7 +176,7 @@ export default function CamareroPage() {
   }, [juego, conectados]);
 
   const mesa = useMemo(() => {
-    const base = juego?.mesa || {};
+    const base: any = juego?.mesa || {};
     return {
       centro: base.centro || [],
       reveladas: base.reveladas || [],
@@ -431,7 +431,7 @@ export default function CamareroPage() {
               <div className="md:col-span-2 bg-black/30 border border-trattoria-gold/40 rounded-2xl p-4">
                 <h3 className="text-trattoria-cream font-bold mb-3">Mesa de la cocina</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {mesa.centro.map((c) => (
+                  {mesa.centro.map((c: CocinaCarta) => (
                     <button
                       key={c.id}
                       onClick={() => setCocinaSeleccionada(c.id)}
@@ -599,7 +599,7 @@ export default function CamareroPage() {
               <div className="bg-black/30 border border-trattoria-gold/30 rounded-2xl p-4">
                 <h4 className="text-trattoria-cream font-bold mb-2">Cartas reveladas</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  {mesa.reveladas.map((c) => (
+                  {mesa.reveladas.map((c: any) => (
                     <div key={c.id} className="border border-trattoria-gold/40 rounded-lg p-2 bg-black/40">
                       <p className="text-xs text-trattoria-gold/70 uppercase">{c.categoria}</p>
                       <p className="text-trattoria-cream font-bold">{c.plato}</p>
