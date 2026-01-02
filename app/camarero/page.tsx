@@ -172,7 +172,7 @@ export default function CamareroPage() {
 
   const jugadoresLista = useMemo(() => {
     if (juego?.jugadores) return Object.values(juego.jugadores);
-    return Object.values(conectados);
+    return Object.values(conectados).map((c) => ({ ...c, puntos: 0, quejas: 0, pedido: [] }));
   }, [juego, conectados]);
 
   const miEstado = usuarioLogueado ? juego?.jugadores?.[usuarioLogueado.uid] : null;
