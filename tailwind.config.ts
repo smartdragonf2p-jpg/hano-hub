@@ -2,25 +2,22 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-    // Por si no usas la carpeta src, agregamos estas rutas también:
+    // Aquí es donde Tailwind busca tus archivos para ponerles color
+    "./app/**/*.{js,ts,jsx,tsx,mdx}", 
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       fontFamily: {
-        serif: ['var(--font-playfair)', 'serif'], 
-        body: ['var(--font-lora)', 'serif'], 
+        serif: ['var(--font-playfair)', 'serif'],
+        body: ['var(--font-lora)', 'serif'],
       },
       colors: {
         'trattoria': {
           red: '#8B0000',      // Rojo sangre
           gold: '#D4AF37',     // Dorado antiguo
-          cream: '#FDF5E6',    // Crema / Mantel viejo
+          cream: '#FDF5E6',    // Crema
           wood: '#3E2723',     // Madera oscura
           'wood-light': '#5D4037',
         }

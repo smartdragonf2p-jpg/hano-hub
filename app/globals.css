@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Rutas donde tailwind debe escanear utilidades */
+@source "./app/**/*.{js,ts,jsx,tsx,mdx}";
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Tema trattoria para colores/fuentes/backgrounds en Tailwind v4 */
+@theme {
+  --font-serif: var(--font-playfair), serif;
+  --font-body: var(--font-lora), serif;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+  --color-trattoria-red: #8b0000;
+  --color-trattoria-gold: #d4af37;
+  --color-trattoria-cream: #fdf5e6;
+  --color-trattoria-wood: #3e2723;
+  --color-trattoria-wood-light: #5d4037;
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  --background-image-checkered-pattern: repeating-linear-gradient(
+      45deg,
+      rgba(139, 0, 0, 0.1) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(139, 0, 0, 0.1) 75%,
+      rgba(139, 0, 0, 0.1)
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(139, 0, 0, 0.1) 25%,
+      #0c0a09 25%,
+      #0c0a09 75%,
+      rgba(139, 0, 0, 0.1) 75%,
+      rgba(139, 0, 0, 0.1)
+    );
 }
