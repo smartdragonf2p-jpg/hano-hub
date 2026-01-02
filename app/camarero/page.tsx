@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db, auth } from '../lib/firebase';
 import { ref, onValue, set, update, onDisconnect, get } from 'firebase/database';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
   CARTAS_BASE,
   CATEGORIAS,
@@ -11,12 +11,14 @@ import {
 import {
   PartidaEstado,
   Categoria,
+  type CocinaCarta,
   crearEstadoInicial,
   accionServir,
   accionDescartar,
   maxDescartesPorTurno,
   PENALIZACION_QUEJA,
 } from './gameLogic';
+import Image from 'next/image';
 
 type Conectado = { nombre: string; foto?: string | null; uid: string; joinedAt: number };
 type AccionPendiente =
@@ -40,10 +42,17 @@ type AccionPendiente =
       dudas: string[];
       finVentana: number;
     };
+type SalaState = {
+  conectados?: Record<string, Conectado>;
+  juego?: PartidaEstado | null;
+  estado?: string;
+  accionPendiente?: AccionPendiente | null;
+  historial?: string;
+};
 
 export default function CamareroPage() {
-  const [partida, setPartida] = useState<any>(null);
-  const [usuarioLogueado, setUsuarioLogueado] = useState<any>(null);
+  const [partida, setPartida] = useState<SalaState | null>(null);
+  const [usuarioLogueado, setUsuarioLogueado] = useState<User | null>(null);
 
   // Form selections
   const [objetivoUid, setObjetivoUid] = useState<string>('');
@@ -144,7 +153,10 @@ export default function CamareroPage() {
     return () => unsub();
   }, []);
 
-  const conectados: Record<string, Conectado> = partida?.conectados || {};
+  const conectados: Record<string, Conectado> = useMemo(
+    () => partida?.conectados || {},
+    [partida?.conectados]
+  );
   const totalConectados = Object.keys(conectados).length;
   const hostUid = useMemo(() => {
     const arr = Object.values(conectados);
@@ -213,14 +225,15 @@ export default function CamareroPage() {
       return;
     }
 
+    const cartaSeleccionada = (juego.mesa.centro as CocinaCarta[]).find((c) => c.id === cocinaSeleccionada);
     await update(ref(db, 'partidas/camarero_1'), {
       accionPendiente: {
         tipo: 'descartar',
         servidorUid: usuarioLogueado.uid,
         cocinaCardId: cocinaSeleccionada,
-        categoria: juego.mesa.centro.find((c: any) => c.id === cocinaSeleccionada)?.categoria,
-        plato: juego.mesa.centro.find((c: any) => c.id === cocinaSeleccionada)?.plato,
-        variante: juego.mesa.centro.find((c: any) => c.id === cocinaSeleccionada)?.variante,
+        categoria: cartaSeleccionada?.categoria,
+        plato: cartaSeleccionada?.plato,
+        variante: cartaSeleccionada?.variante,
         dudas: [],
         finVentana: Date.now() + 4000,
       },
@@ -242,7 +255,7 @@ export default function CamareroPage() {
   const resolverAccion = async () => {
     if (!accionPendiente || !juego) return;
     const dudas = accionPendiente.dudas || [];
-    let resultado: any = null;
+    let resultado: ReturnType<typeof accionServir> | ReturnType<typeof accionDescartar> | null = null;
 
     if (accionPendiente.tipo === 'servir') {
       resultado = accionServir({
@@ -383,7 +396,7 @@ export default function CamareroPage() {
                 >
                   <div className="w-16 h-16 rounded-full border-4 border-trattoria-wood-light bg-trattoria-wood/60 flex items-center justify-center overflow-hidden">
                     {jugador?.foto ? (
-                      <img src={jugador.foto} alt="" className="w-full h-full object-cover" />
+                      <Image src={jugador.foto} alt="" width={64} height={64} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-trattoria-cream font-serif text-lg leading-none text-center block w-full">
                         Mesa {i + 1}
