@@ -175,6 +175,10 @@ export default function CamareroPage() {
     return Object.values(conectados).map((c) => ({ ...c, puntos: 0, quejas: 0, pedido: [] }));
   }, [juego, conectados]);
 
+  const mesa = useMemo(() => {
+    return juego?.mesa || { centro: [], reveladas: [], mazoCocina: [], mazoPedidos: [], descarte: [] };
+  }, [juego]);
+
   const miEstado = usuarioLogueado ? juego?.jugadores?.[usuarioLogueado.uid] : null;
 
   // ---- Acciones ----
@@ -420,7 +424,7 @@ export default function CamareroPage() {
               <div className="md:col-span-2 bg-black/30 border border-trattoria-gold/40 rounded-2xl p-4">
                 <h3 className="text-trattoria-cream font-bold mb-3">Mesa de la cocina</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {juego.mesa.centro.map((c) => (
+                  {mesa.centro.map((c) => (
                     <button
                       key={c.id}
                       onClick={() => setCocinaSeleccionada(c.id)}
@@ -588,14 +592,14 @@ export default function CamareroPage() {
               <div className="bg-black/30 border border-trattoria-gold/30 rounded-2xl p-4">
                 <h4 className="text-trattoria-cream font-bold mb-2">Cartas reveladas</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  {juego.mesa.reveladas.map((c) => (
+                  {mesa.reveladas.map((c) => (
                     <div key={c.id} className="border border-trattoria-gold/40 rounded-lg p-2 bg-black/40">
                       <p className="text-xs text-trattoria-gold/70 uppercase">{c.categoria}</p>
                       <p className="text-trattoria-cream font-bold">{c.plato}</p>
                       <p className="text-trattoria-gold text-xs">{c.variante}</p>
                     </div>
                   ))}
-                  {juego.mesa.reveladas.length === 0 && <p className="text-trattoria-gold/60">Sin reveladas aún</p>}
+                  {mesa.reveladas.length === 0 && <p className="text-trattoria-gold/60">Sin reveladas aún</p>}
                 </div>
               </div>
             </div>
