@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../lib/firebase';
 import { ref, onValue, set, update, onDisconnect, get } from 'firebase/database';
+import { onAuthStateChanged } from 'firebase/auth';
 import { generarMazoOficial, CATEGORIAS } from './constants';
 
 export default function CamareroPage() {
@@ -9,31 +10,54 @@ export default function CamareroPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [usuarioLogueado, setUsuarioLogueado] = useState<any>(null);
 
+  // Suscribimos al auth para registrar al jugador en conectados con su apodo.
   useEffect(() => {
-    const setupJugador = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        setUsuarioLogueado(user);
-
-        // Buscamos el nombre personalizado
-        const nicknameRef = ref(db, `users/${user.uid}/nickname`);
-        const nicknameSnap = await get(nicknameRef);
-        const nombreFinal = nicknameSnap.exists() ? nicknameSnap.val() : user.displayName;
-        
-        // Entramos al Lobby
-        const playerRef = ref(db, `partidas/camarero_1/conectados/${user.uid}`);
-        await set(playerRef, {
-          nombre: nombreFinal,
-          foto: user.photoURL,
-          uid: user.uid
-        });
-
-        onDisconnect(playerRef).remove();
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "/";
+        return;
       }
-    };
 
-    setupJugador();
+      setUsuarioLogueado(user);
 
+      const nicknameRef = ref(db, `users/${user.uid}/nickname`);
+      const nicknameSnap = await get(nicknameRef);
+      const nombreFinal = nicknameSnap.exists() ? nicknameSnap.val() : user.displayName;
+
+      const conectadosRef = ref(db, 'partidas/camarero_1/conectados');
+      const conectadosSnap = await get(conectadosRef);
+      const conectadosData = conectadosSnap.val() || {};
+      const yaEsta = !!conectadosData[user.uid];
+      const totalConectados = Object.keys(conectadosData).length;
+
+      if (!yaEsta && totalConectados >= 10) {
+        alert("La cocina está llena. Hay 10 camareros conectados.");
+        return;
+      }
+      
+      const playerRef = ref(db, `partidas/camarero_1/conectados/${user.uid}`);
+      await set(playerRef, {
+        nombre: nombreFinal,
+        foto: user.photoURL,
+        uid: user.uid
+      });
+
+      onDisconnect(playerRef).remove();
+
+      // Si la sala no tiene estado, la inicializamos en ESPERANDO.
+      const salaRootRef = ref(db, 'partidas/camarero_1');
+      const salaRootSnap = await get(salaRootRef);
+      const salaData = salaRootSnap.val() || {};
+      if (!salaData.estado) {
+        await update(salaRootRef, { estado: 'ESPERANDO', historial: "Esperando camareros..." });
+      }
+    });
+
+    return () => unsubAuth();
+  }, []);
+
+  // Suscripci?n a la sala para ver conectados y estado en tiempo real.
+  useEffect(() => {
     const salaRef = ref(db, 'partidas/camarero_1');
     const unsub = onValue(salaRef, (snapshot) => {
       setPartida(snapshot.val());
@@ -48,8 +72,15 @@ export default function CamareroPage() {
     const mazo = generarMazoOficial();
     const idsJugadores = Object.keys(partida.conectados);
     
-    if (idsJugadores.length < 3) {
-      alert("🤌 ¡Mamma mia! Se necesitan al menos 3 camareros para abrir la cocina.");
+    const total = idsJugadores.length;
+    
+    if (total < 3) {
+      alert("Mamma mia! Se necesitan al menos 3 camareros para abrir la cocina.");
+      return;
+    }
+
+    if (total > 10) {
+      alert("Solo se permiten 10 camareros en la sala.");
       return;
     }
 
@@ -84,6 +115,14 @@ export default function CamareroPage() {
   };
 
   // --- RENDERIZADO ITALIANO ---
+  const conectados = partida?.conectados || {};
+  const totalConectados = Object.keys(conectados).length;
+  const puedeComenzar = totalConectados >= 3 && totalConectados <= 10;
+  const listaConectados = Object.values(conectados).sort((a: any, b: any) => {
+    if (usuarioLogueado && a.uid === usuarioLogueado.uid) return -1;
+    if (usuarioLogueado && b.uid === usuarioLogueado.uid) return 1;
+    return 0;
+  });
 
   return (
     // Fondo con textura de mantel y viñeta oscura
@@ -111,12 +150,15 @@ export default function CamareroPage() {
             <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-trattoria-gold rounded-bl-xl opacity-50"></div>
             <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-trattoria-gold rounded-br-xl opacity-50"></div>
 
-            <h2 className="text-2xl font-serif text-center mb-8 text-trattoria-cream tracking-wider">
-               Staff de Cocina ({Object.keys(partida?.conectados || {}).length})
+            <h2 className="text-2xl font-serif text-center mb-2 text-trattoria-cream tracking-wider">
+               Staff de Cocina ({totalConectados}/10)
             </h2>
+            <p className="text-center text-sm text-trattoria-gold/70 mb-6">
+              Necesitamos mínimo 3 y máximo 10 camareros conectados.
+            </p>
             
             <div className="grid grid-cols-2 gap-6 mb-10">
-              {partida?.conectados && Object.values(partida.conectados).map((p: any, i: number) => (
+              {partida?.conectados && listaConectados.map((p: any, i: number) => (
                 <div key={i} className="flex flex-col items-center group">
                   <div className="relative mb-3 transition-transform group-hover:scale-110 duration-300">
                      {/* Marco de foto dorado */}
@@ -132,17 +174,19 @@ export default function CamareroPage() {
 
             <button 
               onClick={repartirCartas}
-              className="w-full relative overflow-hidden bg-trattoria-red hover:bg-red-800 text-trattoria-cream py-5 rounded-xl font-serif font-bold text-xl transition-all shadow-[0_10px_20px_rgba(139,0,0,0.3),inset_0_2px_0_rgba(255,255,255,0.2)] active:scale-95 border-2 border-trattoria-gold group"
+              disabled={!puedeComenzar}
+              aria-disabled={!puedeComenzar}
+              className="w-full relative overflow-hidden bg-trattoria-red hover:bg-red-800 disabled:bg-trattoria-wood/70 disabled:text-trattoria-cream/60 disabled:border-trattoria-wood-light/70 text-trattoria-cream py-5 rounded-xl font-serif font-bold text-xl transition-all shadow-[0_10px_20px_rgba(139,0,0,0.3),inset_0_2px_0_rgba(255,255,255,0.2)] active:scale-95 border-2 border-trattoria-gold group disabled:cursor-not-allowed disabled:active:scale-100"
             >
                <span className="relative z-10 flex items-center justify-center gap-2">
-                  🍽️ ¡Marchare la Comanda!
+                  🍝 Marchare la Comanda!
                </span>
                {/* Brillo al pasar el mouse */}
                <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-trattoria-gold/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
             </button>
             
             <p className="text-trattoria-gold/60 text-center text-xs mt-6 font-serif italic">
-              * Se requieren mínimo 3 camareros para abrir la cocina.
+              * Se requieren mínimo 3 camareros para abrir la cocina (capacidad 10).
             </p>
           </div>
         </div>
