@@ -171,9 +171,9 @@ export default function CamareroPage() {
   const puedoIniciar = usuarioLogueado && hostUid === usuarioLogueado.uid && totalConectados >= 3 && totalConectados <= 10;
 
   const jugadoresLista = useMemo(() => {
-    if (!juego?.jugadores) return [];
-    return Object.values(juego.jugadores);
-  }, [juego]);
+    if (juego?.jugadores) return Object.values(juego.jugadores);
+    return Object.values(conectados);
+  }, [juego, conectados]);
 
   const miEstado = usuarioLogueado ? juego?.jugadores?.[usuarioLogueado.uid] : null;
 
