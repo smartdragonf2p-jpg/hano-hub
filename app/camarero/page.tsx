@@ -24,11 +24,27 @@ export default function CamareroPage() {
       const nicknameSnap = await get(nicknameRef);
       const nombreFinal = nicknameSnap.exists() ? nicknameSnap.val() : user.displayName;
 
+      const salaRootRef = ref(db, 'partidas/camarero_1');
+      const salaRootSnap = await get(salaRootRef);
+      const salaData = salaRootSnap.val() || {};
+      const hayJugadoresActivos = salaData.jugadores && Object.keys(salaData.jugadores).length > 0;
+      const partidaActiva = salaData.estado && salaData.estado !== 'ESPERANDO' && hayJugadoresActivos;
+
+      // Si hay una partida activa, no añadimos a conectados. Mostrará "Partida en curso".
+      if (partidaActiva) {
+        return;
+      }
+
+      // Si el estado está huérfano, lo normalizamos.
+      if (!salaData.estado || (salaData.estado !== 'ESPERANDO' && !hayJugadoresActivos)) {
+        await update(salaRootRef, { estado: 'ESPERANDO', historial: salaData.historial || "Esperando camareros...", jugadores: null, cartasCentro: null, mazoRestante: null });
+      }
+
       const conectadosRef = ref(db, 'partidas/camarero_1/conectados');
-        const conectadosSnap = await get(conectadosRef);
-        const conectadosData = conectadosSnap.val() || {};
-        const yaEsta = !!conectadosData[user.uid];
-        const totalConectados = Object.keys(conectadosData).length;
+      const conectadosSnap = await get(conectadosRef);
+      const conectadosData = conectadosSnap.val() || {};
+      const yaEsta = !!conectadosData[user.uid];
+      const totalConectados = Object.keys(conectadosData).length;
 
       if (!yaEsta && totalConectados >= 10) {
         alert("La cocina está llena. Hay 10 camareros conectados.");
@@ -44,14 +60,6 @@ export default function CamareroPage() {
       });
 
       onDisconnect(playerRef).remove();
-
-      // Si la sala no tiene estado, la inicializamos en ESPERANDO.
-      const salaRootRef = ref(db, 'partidas/camarero_1');
-      const salaRootSnap = await get(salaRootRef);
-      const salaData = salaRootSnap.val() || {};
-      if (!salaData.estado) {
-        await update(salaRootRef, { estado: 'ESPERANDO', historial: "Esperando camareros..." });
-      }
     });
 
     return () => unsubAuth();
@@ -64,9 +72,16 @@ export default function CamareroPage() {
       const data = snapshot.val();
       setPartida(data);
 
-      // Si la sala existe pero no tiene estado, la ponemos en ESPERANDO.
-      if (data && !data.estado) {
-        update(salaRef, { estado: 'ESPERANDO', historial: data.historial || "Esperando camareros..." });
+      // Normalizamos a ESPERANDO si no hay estado o si quedó en otro estado sin jugadores.
+      const hayJugadores = data?.jugadores && Object.keys(data.jugadores).length > 0;
+      if (data && (!data.estado || (data.estado !== 'ESPERANDO' && !hayJugadores))) {
+        update(salaRef, {
+          estado: 'ESPERANDO',
+          historial: data?.historial || "Esperando camareros...",
+          jugadores: null,
+          cartasCentro: null,
+          mazoRestante: null,
+        });
       }
     });
 
@@ -133,9 +148,10 @@ export default function CamareroPage() {
     return 0;
   });
   const mesas = Array.from({ length: 10 }, (_, i) => listaConectados[i] || null);
-  const hayJugadoresEnPartida = partida?.jugadores && Object.keys(partida.jugadores).length > 0;
+  const hayJugadoresEnPartida = !!(partida?.jugadores && Object.keys(partida.jugadores).length > 0);
   const partidaEnCurso = !!(partida?.estado && partida.estado !== 'ESPERANDO' && hayJugadoresEnPartida);
-  const puedeVerLobby = !partidaEnCurso;
+  const partidaHuerfana = !!(partida?.estado && partida.estado !== 'ESPERANDO' && !hayJugadoresEnPartida);
+  const puedeVerLobby = !partidaEnCurso || partidaHuerfana;
 
   const irAlLobby = () => {
     const el = document.getElementById('lobby');
@@ -143,9 +159,15 @@ export default function CamareroPage() {
   };
 
   const entrarASala = async () => {
-    if (partidaEnCurso) return;
+    if (partidaEnCurso && !partidaHuerfana) return;
     const salaRef = ref(db, 'partidas/camarero_1');
-    await update(salaRef, { estado: 'ESPERANDO', historial: partida?.historial || "Esperando camareros..." });
+    await update(salaRef, { 
+      estado: 'ESPERANDO',
+      historial: partida?.historial || "Esperando camareros...",
+      jugadores: null,
+      cartasCentro: null,
+      mazoRestante: null,
+    });
     irAlLobby();
   };
 
