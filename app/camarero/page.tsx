@@ -133,10 +133,20 @@ export default function CamareroPage() {
     return 0;
   });
   const mesas = Array.from({ length: 10 }, (_, i) => listaConectados[i] || null);
+  const hayJugadoresEnPartida = partida?.jugadores && Object.keys(partida.jugadores).length > 0;
+  const partidaEnCurso = !!(partida?.estado && partida.estado !== 'ESPERANDO' && hayJugadoresEnPartida);
+  const puedeVerLobby = !partidaEnCurso;
 
   const irAlLobby = () => {
     const el = document.getElementById('lobby');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const entrarASala = async () => {
+    if (partidaEnCurso) return;
+    const salaRef = ref(db, 'partidas/camarero_1');
+    await update(salaRef, { estado: 'ESPERANDO', historial: partida?.historial || "Esperando camareros..." });
+    irAlLobby();
   };
 
   return (
@@ -150,10 +160,11 @@ export default function CamareroPage() {
         </a>
         <button
           type="button"
-          onClick={irAlLobby}
-          className="bg-trattoria-red text-trattoria-cream px-4 py-2 rounded-lg font-serif font-bold shadow-[0_8px_20px_rgba(139,0,0,0.35)] border border-trattoria-gold hover:bg-red-800 active:scale-95 transition-all"
+          onClick={entrarASala}
+          disabled={partidaEnCurso}
+          className="bg-trattoria-red text-trattoria-cream px-4 py-2 rounded-lg font-serif font-bold shadow-[0_8px_20px_rgba(139,0,0,0.35)] border border-trattoria-gold hover:bg-red-800 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
         >
-          Ingresar a la sala
+          Ingresar al juego
         </button>
       </div>
       
@@ -168,7 +179,7 @@ export default function CamareroPage() {
       </div>
       
       {/* 1. LOBBY / SALA DE ESPERA ESTILO PIZARRA DE MENÚ */}
-      {(!partida?.estado || partida.estado === 'ESPERANDO') && (
+      {puedeVerLobby && (
         <div id="lobby" className="relative z-10 animate-in zoom-in duration-500 w-full max-w-5xl">
           {/* Marco de madera y fondo de pizarra/menú */}
           <div className="bg-trattoria-wood bg-opacity-95 border-[6px] border-trattoria-wood-light rounded-[2rem] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden">
@@ -239,6 +250,14 @@ export default function CamareroPage() {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mensaje cuando hay una partida en curso */}
+      {partidaEnCurso && (
+        <div className="w-full max-w-3xl mt-10 text-center bg-black/40 border border-trattoria-wood/40 rounded-2xl p-6 text-trattoria-cream">
+          <p className="text-xl font-serif font-bold mb-2">Partida en curso</p>
+          <p className="text-trattoria-gold/70 text-sm">Espera a que termine para ingresar al lobby.</p>
         </div>
       )}
 
