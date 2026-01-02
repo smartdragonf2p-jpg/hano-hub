@@ -27,17 +27,17 @@ export default function CamareroPage() {
       const salaRootRef = ref(db, 'partidas/camarero_1');
       const salaRootSnap = await get(salaRootRef);
       const salaData = salaRootSnap.val() || {};
+      const conectadosCount = salaData.conectados ? Object.keys(salaData.conectados).length : 0;
       const hayJugadoresActivos = salaData.jugadores && Object.keys(salaData.jugadores).length > 0;
-      const partidaActiva = salaData.estado && salaData.estado !== 'ESPERANDO' && hayJugadoresActivos;
+      const salaActiva = salaData.estado && salaData.estado !== 'ESPERANDO';
+      const salaHuerfana = salaActiva && (!hayJugadoresActivos || conectadosCount === 0);
 
-      // Si hay una partida activa, no añadimos a conectados. Mostrará "Partida en curso".
-      if (partidaActiva) {
-        return;
-      }
-
-      // Si el estado está huérfano, lo normalizamos.
-      if (!salaData.estado || (salaData.estado !== 'ESPERANDO' && !hayJugadoresActivos)) {
+      // Si quedó activa pero sin gente/jugadores, la reiniciamos.
+      if (salaHuerfana || !salaData.estado) {
         await update(salaRootRef, { estado: 'ESPERANDO', historial: salaData.historial || "Esperando camareros...", jugadores: null, cartasCentro: null, mazoRestante: null });
+      } else if (salaActiva) {
+        // Si está activa con gente, no añadimos al lobby.
+        return;
       }
 
       const conectadosRef = ref(db, 'partidas/camarero_1/conectados');
@@ -72,9 +72,13 @@ export default function CamareroPage() {
       const data = snapshot.val();
       setPartida(data);
 
-      // Normalizamos a ESPERANDO si no hay estado o si quedó en otro estado sin jugadores.
       const hayJugadores = data?.jugadores && Object.keys(data.jugadores).length > 0;
-      if (data && (!data.estado || (data.estado !== 'ESPERANDO' && !hayJugadores))) {
+      const hayConectados = data?.conectados && Object.keys(data.conectados).length > 0;
+      const salaActiva = data?.estado && data.estado !== 'ESPERANDO';
+      const salaHuerfana = salaActiva && (!hayJugadores || !hayConectados);
+
+      // Normalizamos a ESPERANDO si no hay estado o si quedó en otro estado sin jugadores/conectados.
+      if (data && (!data.estado || salaHuerfana)) {
         update(salaRef, {
           estado: 'ESPERANDO',
           historial: data?.historial || "Esperando camareros...",
@@ -149,9 +153,11 @@ export default function CamareroPage() {
   });
   const mesas = Array.from({ length: 10 }, (_, i) => listaConectados[i] || null);
   const hayJugadoresEnPartida = !!(partida?.jugadores && Object.keys(partida.jugadores).length > 0);
-  const partidaEnCurso = !!(partida?.estado && partida.estado !== 'ESPERANDO' && hayJugadoresEnPartida);
-  const partidaHuerfana = !!(partida?.estado && partida.estado !== 'ESPERANDO' && !hayJugadoresEnPartida);
-  const puedeVerLobby = !partidaEnCurso || partidaHuerfana;
+  const hayConectadosEnSala = totalConectados > 0;
+  const salaActiva = !!(partida?.estado && partida.estado !== 'ESPERANDO');
+  const partidaEnCurso = salaActiva && hayJugadoresEnPartida && hayConectadosEnSala;
+  const partidaHuerfana = salaActiva && (!hayJugadoresEnPartida || !hayConectadosEnSala);
+  const puedeVerLobby = !salaActiva || partidaHuerfana;
 
   const irAlLobby = () => {
     const el = document.getElementById('lobby');
