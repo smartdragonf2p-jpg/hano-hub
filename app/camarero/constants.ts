@@ -1,6 +1,7 @@
-export const CATEGORIAS = ["Entrada", "Plato Principal", "Guarnición", "Postre", "Bebida"];
-
-type Categoria = (typeof CATEGORIAS)[number];
+// Definición de categorías y cartas base (50 platos, 2 variantes cada uno)
+// Notas: se usan nombres con acentos originales; si se requiere ASCII, ajustar aquí.
+export const CATEGORIAS = ["Entrada", "Plato Principal", "Guarnición", "Postre", "Bebida"] as const;
+export type Categoria = (typeof CATEGORIAS)[number];
 
 type CartaBase = {
   categoria: Categoria;
@@ -72,31 +73,29 @@ const slugify = (str: string) =>
     .replace(/\s+/g, "-")
     .toLowerCase();
 
-type TipoCarta = "cocina" | "pedido";
+// Mazo para pedidos de los jugadores (tipo fijo "pedido")
+export const generarMazoPedidos = () =>
+  CARTAS_BASE.flatMap((item, platoIdx) =>
+    item.variantes.map((variante, varIdx) => ({
+      id: `pedido-${slugify(item.categoria)}-${slugify(item.plato)}-${varIdx}-${platoIdx}`,
+      categoria: item.categoria,
+      plato: item.plato,
+      variante,
+      tipo: "pedido" as const,
+    }))
+  ).sort(() => Math.random() - 0.5);
 
-const buildMazo = (tipo: TipoCarta) => {
-  const mazo: { id: string; categoria: string; plato: string; variante: string; tipo: TipoCarta }[] = [];
-
-  CARTAS_BASE.forEach((item, platoIdx) => {
-    item.variantes.forEach((variante, varIdx) => {
-      mazo.push({
-        id: `${tipo}-${slugify(item.categoria)}-${slugify(item.plato)}-${varIdx}-${platoIdx}`,
-        categoria: item.categoria,
-        plato: item.plato,
-        variante,
-        tipo,
-      });
-    });
-  });
-
-  return mazo;
-};
-
-// Mazo para pedidos de los jugadores
-export const generarMazoPedidos = () => buildMazo("pedido").sort(() => Math.random() - 0.5);
-
-// Mazo para la cocina (mesa central / cartas comunes)
-export const generarMazoCocina = () => buildMazo("cocina").sort(() => Math.random() - 0.5);
+// Mazo para la cocina (tipo fijo "cocina")
+export const generarMazoCocina = () =>
+  CARTAS_BASE.flatMap((item, platoIdx) =>
+    item.variantes.map((variante, varIdx) => ({
+      id: `cocina-${slugify(item.categoria)}-${slugify(item.plato)}-${varIdx}-${platoIdx}`,
+      categoria: item.categoria,
+      plato: item.plato,
+      variante,
+      tipo: "cocina" as const,
+    }))
+  ).sort(() => Math.random() - 0.5);
 
 // Alias para compatibilidad (usa el mazo de pedidos)
 export const generarMazoOficial = generarMazoPedidos;
